@@ -4,6 +4,10 @@ const { pool } = require('./dbConfig');
 const bcrypt = require('bcrypt');
 const session = require('express-session');
 const flash = require('express-flash');
+const passport = require('passport');
+
+const initializePassport = require('./passportConfig');
+initializePassport(passport);
 
 const PORT = process.env.PORT || 4000;
 
@@ -15,6 +19,9 @@ app.use(session({
     resave: false,
     saveUninitialized: false
 }));
+
+app.use(passport.initialize());
+app.use(passport.session());
 
 app.use(flash());
 
@@ -31,7 +38,17 @@ app.get("/users/login", (req, res) => {
 });
 
 app.get("/users/dashboard", (req, res) => {
-    res.render("dashboard",{user: "Dilum"});
+    res.render("dashboard",{user: req.user.name});
+});
+
+app.get("/users/logout", (req, res, next) => {
+    req.logOut((err) => {
+        if (err) { 
+            return next(err); 
+        }
+        req.flash("success_msg", "You are logged out");
+        res.redirect("/users/login");
+    });
 });
 
 app.post("/users/register", async (req, res) => {
@@ -80,6 +97,12 @@ app.post("/users/register", async (req, res) => {
                 }
     })
 }});
+
+app.post("/users/login", passport.authenticate("local", {
+    successRedirect: "/users/dashboard",
+    failureRedirect: "/users/login",
+    failureFlash: true
+}));
 
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
